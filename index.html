@@ -1,15 +1,14 @@
-/**
- * 醫護實習生一站式服務平台 - 後端接收程式
- * 功能：接收來自網頁的 POST 請求，將課程報名與實習登記資料寫入 Google Sheets
+/** * 醫護實習生一站式服務平台 - 後端接收程式
+ * 建議：請先執行一次 runSetup 函式來建立試算表表頭
  */
 
-const SHEET_NAME = "報名資料"; // 試算表分頁名稱
+const SHEET_NAME = "報名資料"; // 請確保試算表內的分頁名稱完全一致
 
+// --- 1. 處理網頁傳來的資料 (POST) ---
 function doPost(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME);
   
-  // 如果找不到分頁，則建立一個
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
     setupHeaders(sheet);
@@ -19,23 +18,22 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     const timestamp = new Date();
     
-    // 根據資料類型 (type) 整理寫入的列
-    // 欄位順序：提交時間, 資料類型, 姓名, 學號/員編, 單位/學校, Email, 課程名稱, 性別, 身分證/護照, 實習科別, 開始日期, 結束日期, 手機, 緊急聯絡人
-    let row = [
+    // 欄位順序對應表
+    const row = [
       timestamp,
-      data.type,                     // 課程報名 或 實習登記
+      data.type || "未分類",
       data.name || "",
-      data.idNumber || "",           // 學號或員編
-      data.unit || "",               // 單位或學校
+      data.idNumber || "",
+      data.unit || "",
       data.email || "",
-      data.courseName || "N/A",      // 僅課程報名有值
-      data.gender || "",             // 僅實習登記有值
-      data.identityId || "",         // 僅實習登記有值
-      data.department || "",         // 僅實習登記有值
-      data.startDate || "",          // 僅實習登記有值
-      data.endDate || "",            // 僅實習登記有值
-      data.phone || "",              // 僅實習登記有值
-      data.emergency || ""           // 僅實習登記有值
+      data.courseName || "N/A",
+      data.gender || "",
+      data.identityId || "",
+      data.department || "",
+      data.startDate || "",
+      data.endDate || "",
+      data.phone || "",
+      data.emergency || ""
     ];
 
     sheet.appendRow(row);
@@ -44,12 +42,19 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "error": error.toString() }))
+    return ContentService.createTextOutput(JSON.stringify({ "result": "error", "message": error.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-// 初始化表頭的功能
+// --- 2. 讓網址可以直接打開看狀態 (GET) ---
+// 增加這個函式後，你點開網址才不會看到錯誤，而是會看到「服務運作中」
+function doGet() {
+  return ContentService.createTextOutput("服務運作中！請透過網頁表單提交資料。")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// --- 3. 初始化表頭設定 ---
 function setupHeaders(sheet) {
   const headers = [
     "提交時間", "資料類型", "姓名", "學號/員編", "單位/學校/系所", 
@@ -57,14 +62,19 @@ function setupHeaders(sheet) {
     "開始日期", "結束日期", "手機號碼", "緊急聯絡人與電話"
   ];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(1, 1, 1, headers.length).setBackground("#134E4A").setFontColor("#FFFFFF").setFontWeight("bold");
+  sheet.getRange(1, 1, 1, headers.length)
+       .setBackground("#134E4A")
+       .setFontColor("#FFFFFF")
+       .setFontWeight("bold");
   sheet.setFrozenRows(1);
 }
 
-// 執行此函式可手動建立表頭
+// --- 4. 手機手動執行此函式來初始化 ---
 function runSetup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+  }
   setupHeaders(sheet);
 }
